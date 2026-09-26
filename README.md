@@ -34,7 +34,7 @@ psram::fallback::vector<int> safe;                 // PSRAM first, internal RAM 
 
 ### Arduino IDE
 
-1. Install the library: *Sketch > Include Library > Add .ZIP Library* with the [latest release](https://github.com/aeljandro2/esp32-psram-stl/releases). (Library Manager listing is pending.)
+1. Install the library: *Tools > Manage Libraries*, search for **PsramStl**, and click *Install*. (Or *Sketch > Include Library > Add .ZIP Library* with the [latest release](https://github.com/aeljandro2/esp32-psram-stl/releases).)
 2. Turn PSRAM on: *Tools > PSRAM > Enabled* (ESP32) or *OPI PSRAM* (ESP32-S3 modules with octal PSRAM, such as N8R8).
 3. Open *File > Examples > PsramStl > QuickStart*.
 
