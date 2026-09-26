@@ -1,7 +1,7 @@
 dependencies:
-  # Your project: take the library from GitHub (or, once published, from the ESP Component Registry).
-  esp32-psram-stl:
-    git: https://github.com/aeljandro2/esp32-psram-stl.git
-    version: v2.0.0
-    # Inside this repository, build against the local copy instead.
+  # In your own project, use the registry name (once published) or the git form
+  # shown in the README. Inside this repository, the example builds against the
+  # local copy.
+  aeljandro2/esp32-psram-stl:
+    version: "*"
     override_path: "../../../.."

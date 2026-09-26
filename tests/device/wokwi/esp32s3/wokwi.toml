@@ -1,4 +1,0 @@
-[wokwi]
-version = 1
-firmware = '../../build/esp32s3/flasher_args.json'
-elf = '../../build/esp32s3/psram_stl_device_tests.elf'

@@ -13,10 +13,10 @@ void setup() {
     return;  // begin() already printed how to enable PSRAM
   }
 
-  // One million floats: 4 MB would not fit in internal RAM, but PSRAM holds it.
+  // 250,000 floats = 1 MB: about three times all of the internal RAM.
   psram::vector<float> samples;
-  samples.reserve(1000000);
-  for (int i = 0; i < 1000000; ++i) {
+  samples.reserve(250000);
+  for (int i = 0; i < 250000; ++i) {
     samples.push_back(i * 0.5f);
   }
 

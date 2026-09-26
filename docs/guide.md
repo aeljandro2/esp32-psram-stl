@@ -98,7 +98,7 @@ Two habits keep the largest free block large:
 1. `reserve()` whenever you know the size, ideally right after construction.
 2. Watch `psram::info().largest_block` during development, not just `free`.
 
-The [Diagnostics example](../examples/Diagnostics/Diagnostics.ino) prints both numbers for the same data built with and without `reserve()`.
+The [Diagnostics example](../examples/Diagnostics/Diagnostics.ino) prints both numbers for the same data built with and without `reserve()`. On a freshly booted board the two stay close, because the heap merges freed neighbors; the difference shows up over hours of mixed, long-lived allocations.
 
 ## Globals and static storage
 

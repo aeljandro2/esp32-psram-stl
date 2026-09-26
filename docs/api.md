@@ -89,7 +89,7 @@ struct heap_info {
     std::size_t total;          // PSRAM in the heap
     std::size_t free;           // free now
     std::size_t largest_block;  // largest single allocation possible now
-    std::size_t minimum_free;   // lowest free since boot
+    std::size_t minimum_free;   // lowest free since boot (see note)
 };
 
 bool      available();                          // PSRAM heap exists
@@ -103,6 +103,8 @@ bool      begin();                              // same as available()
 void      report(Print& out);                   // psram::report(Serial)
 bool      begin(Print& out);                    // report, or a hint on how to enable PSRAM
 ```
+
+**Note on `minimum_free`:** under Arduino-ESP32 3.3 it reads 0. The number comes from ESP-IDF's heap, and in Arduino the PSRAM region is added to the heap at runtime. Under plain ESP-IDF it reports the true high-water mark. Use `free` and `largest_block` in Arduino.
 
 ## Configuration macros
 

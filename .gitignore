@@ -6,3 +6,7 @@ tests/device/managed_components/
 tests/device/dependencies.lock
 .vscode/
 .idea/
+extras/**/sdkconfig
+extras/**/sdkconfig.old
+extras/**/dependencies.lock
+extras/**/managed_components/

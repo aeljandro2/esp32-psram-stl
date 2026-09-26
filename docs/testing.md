@@ -1,6 +1,6 @@
 # Testing
 
-Three layers, all automated in [CI](../.github/workflows/ci.yml).
+Four layers, all automated in [CI](../.github/workflows/ci.yml).
 
 ## 1. Host tests (seconds, no hardware)
 
@@ -40,7 +40,7 @@ The build uses AddressSanitizer and UndefinedBehaviorSanitizer, `-Wall -Wextra -
 
 **Do the tests catch bugs?** They were checked by mutation: sending allocations to internal RAM, or ignoring alignment, makes the suite fail.
 
-## 2. Device tests (ESP32 and ESP32-S3, in Wokwi or on hardware)
+## 2. Device tests (ESP32 and ESP32-S3, emulated or on hardware)
 
 [`tests/device`](../tests/device) is an ESP-IDF app. It enables exceptions and **comprehensive heap poisoning**, so ESP-IDF fills free memory with a pattern and surrounds every block with guard words. After each test it checks that the PSRAM free size is exactly what it was before and runs `heap_caps_check_integrity_all()`.
 
@@ -48,7 +48,7 @@ The build uses AddressSanitizer and UndefinedBehaviorSanitizer, `-Wall -Wextra -
 |---|---|
 | `psram_is_present` | PSRAM is in the heap |
 | `one_mebibyte_pattern_survives_other_allocations` | A 1 MB pattern stays intact while 200 other blocks come and go: no overlap |
-| `every_container_lives_in_psram` | Element addresses are in external RAM on real memory maps |
+| `every_container_lives_in_psram` | Element addresses are in external RAM on the real memory map |
 | `map_matches_std_map_under_random_operations` | 20,000 random operations on the device |
 | `unordered_map_and_vector_match_std_under_random_operations` | Same, for hashing and erasing in the middle |
 | `over_aligned_types_are_aligned_in_psram` | `heap_caps_aligned_alloc` on PSRAM |
@@ -58,30 +58,36 @@ The build uses AddressSanitizer and UndefinedBehaviorSanitizer, `-Wall -Wextra -
 | `both_cores_allocate_concurrently` | Two tasks, one per core, hammering PSRAM maps at once |
 | `growth_versus_reserve_fragmentation_report` | Prints free and largest block for both growth patterns; asserts heap integrity |
 
-Build (ESP-IDF 5.x, or the `espressif/idf` Docker image):
+The suite runs in **QEMU**, [Espressif's emulator](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/tools/qemu.html), which ships with ESP-IDF 5.x and emulates PSRAM (quad on ESP32, octal on ESP32-S3). No account or hardware needed. With Docker, from the repository root (the directory must be named `esp32-psram-stl`, because it is the component name):
 
 ```bash
-cd tests/device
-idf.py -B build/esp32 -D SDKCONFIG=build/esp32/sdkconfig \
-       -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32" set-target esp32 build
+docker run --rm -v "$PWD":/work/esp32-psram-stl -w /work/esp32-psram-stl/tests/device espressif/idf:v5.5.3 bash -lc '
+  idf.py -B build/esp32 -D SDKCONFIG=build/esp32/sdkconfig \
+         -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32" set-target esp32 build &&
+  ./run-qemu.sh esp32'
 ```
 
-The repository directory must be named `esp32-psram-stl`, because it is the component name.
+Use `esp32s3` in all three places for the ESP32-S3. [`run-qemu.sh`](../tests/device/run-qemu.sh) stops the emulator as soon as the suite reports and exits non-zero on failure.
 
-Run on hardware with `idf.py -B build/esp32 flash monitor`, or in Wokwi:
+On hardware: `idf.py -B build/esp32 flash monitor`. A second simulator, Wokwi, is set up in [`extras/wokwi`](../extras/wokwi) (optional, needs a free CI token).
+
+## 3. Arduino examples, booted and checked
+
+CI compiles every example for ESP32 and ESP32-S3 with the Arduino-ESP32 core, then boots each ESP32 image in QEMU and checks one line of its serial output ([`tests/arduino/expected.txt`](../tests/arduino/expected.txt)), for example `data lives in PSRAM: yes`. Images for QEMU are built with `FlashMode=dio`, because the emulated flash chip does not support Arduino's default QIO mode.
 
 ```bash
-export WOKWI_CLI_TOKEN=...   # https://wokwi.com/dashboard/ci
-wokwi-cli --timeout 600000 --expect-text "ALL TESTS PASSED" --fail-text "TESTS FAILED" tests/device/wokwi/esp32
+for e in examples/*/; do
+  n=$(basename "$e")
+  arduino-cli compile --fqbn esp32:esp32:esp32:PSRAM=enabled,FlashMode=dio --library . --output-dir build/arduino/$n "$e"
+done
+docker run --rm -v "$PWD":/work -w /work espressif/idf:v5.5.3 bash -lc tests/arduino/run-in-qemu.sh
 ```
 
-For ESP32-S3, use `esp32s3` in both places.
+## 4. Builds and lint
 
-## 3. Builds
-
-CI compiles every Arduino example for ESP32 and ESP32-S3 with the latest Arduino-ESP32 core, builds the ESP-IDF example with exceptions off, and runs the Arduino Library Manager linter.
+CI also builds the ESP-IDF example with exceptions off (the ESP-IDF default) and runs the Arduino Library Manager linter in strict mode.
 
 ## What is not tested
 
-- **Speed.** Wokwi simulates behavior, not PSRAM timing. Benchmarks need real hardware.
+- **Speed.** Emulators reproduce behavior, not PSRAM timing. Benchmarks need real hardware.
 - **ESP32-S2, ESP32-C5, ESP32-P4.** Expected to work; not in the matrix yet.

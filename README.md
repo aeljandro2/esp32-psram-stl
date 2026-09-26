@@ -17,7 +17,7 @@ An ESP32 has a few hundred KB of internal RAM and, on many modules, megabytes of
 ```cpp
 #include <PsramStl.h>
 
-psram::vector<float> samples(1'000'000);          // 4 MB of floats: PSRAM
+psram::vector<float> samples(250'000);            // 1 MB of floats: PSRAM
 psram::map<int, psram::string> names;              // tree nodes and long strings: PSRAM
 auto frame = psram::make_unique<Frame>();          // your object: PSRAM
 psram::fallback::vector<int> safe;                 // PSRAM first, internal RAM if full
@@ -28,7 +28,7 @@ psram::fallback::vector<int> safe;                 // PSRAM first, internal RAM 
 - **Two policies:** PSRAM only, or PSRAM first with internal RAM as the fallback.
 - **Diagnostics:** free space, largest block, high-water mark, "is this pointer in PSRAM?", heap integrity.
 - **Header-only C++17, no dependencies.** Arduino IDE, PlatformIO, and ESP-IDF.
-- **Tested hard:** 21 host tests under AddressSanitizer and UBSan, plus on-device tests on a simulated ESP32 and ESP32-S3 with heap poisoning on. See [How it is tested](#how-it-is-tested).
+- **Tested hard:** 21 host tests under AddressSanitizer and UBSan, 11 device tests on an emulated ESP32 and ESP32-S3 with heap poisoning on, and every Arduino example booted and checked in the emulator. See [How it is tested](#how-it-is-tested).
 
 ## Quick start
 
@@ -36,7 +36,7 @@ psram::fallback::vector<int> safe;                 // PSRAM first, internal RAM 
 
 1. Install the library: *Sketch > Include Library > Add .ZIP Library* with the [latest release](https://github.com/aeljandro2/esp32-psram-stl/releases). (Library Manager listing is pending.)
 2. Turn PSRAM on: *Tools > PSRAM > Enabled* (ESP32) or *OPI PSRAM* (ESP32-S3 modules with octal PSRAM, such as N8R8).
-3. Open *File > Examples > ESP32 PSRAM STL > QuickStart*.
+3. Open *File > Examples > PsramStl > QuickStart*.
 
 ```cpp
 #include <PsramStl.h>
@@ -46,8 +46,8 @@ void setup() {
   if (!psram::begin(Serial)) return;  // prints a report, or how to enable PSRAM
 
   psram::vector<float> samples;
-  samples.reserve(1000000);           // 4 MB
-  for (int i = 0; i < 1000000; ++i) samples.push_back(i * 0.5f);
+  samples.reserve(250000);            // 1 MB, about 3x all internal RAM
+  for (int i = 0; i < 250000; ++i) samples.push_back(i * 0.5f);
   Serial.printf("in PSRAM: %s\n", psram::is_psram(samples.data()) ? "yes" : "no");
 }
 
@@ -146,7 +146,7 @@ psram::report(Serial);                 // one-line summary (or psram::report() w
 
 ## Rules of thumb
 
-- **`reserve()` what you can.** A vector that grows by `push_back` frees its old buffer at every step. Many small ones growing at once leave gaps that shrink the largest free block. The [Diagnostics example](examples/Diagnostics/Diagnostics.ino) shows the difference.
+- **`reserve()` what you can.** A vector that grows by `push_back` reallocates and copies at every growth step; `reserve()` allocates once. On a long-running device with many long-lived containers, those extra allocations can leave gaps, so keep an eye on `psram::info().largest_block`, not just `free`.
 - **Keep ISR and DMA data in internal RAM.** Interrupt handlers that run while the flash cache is disabled cannot read PSRAM, and some DMA engines cannot reach it. Leave those buffers on `std::` containers or `heap_caps_malloc(..., MALLOC_CAP_DMA)`.
 - **Hot, small data may be faster in internal RAM.** PSRAM goes through a cache over SPI. Big buffers and large collections are where it shines. Measure on your hardware.
 - **Globals:** the container header of a global stays in internal RAM. On ESP-IDF, `EXT_RAM_BSS_ATTR` moves it too (with `CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY`).
@@ -157,8 +157,9 @@ psram::report(Serial);                 // one-line summary (or psram::report() w
 | Layer | What runs | What it proves |
 |---|---|---|
 | Host | 21 tests against a simulated ESP32 heap, built with AddressSanitizer and UBSan, on GCC and Clang | Every byte comes from the right heap; no leaks; out-of-memory paths; alignment; identical results to `std::` under 50,000 random operations; guard bytes around every block stay intact |
-| Device | 11 tests on ESP32 (4 MB quad PSRAM) and ESP32-S3 (8 MB octal PSRAM), simulated in [Wokwi](https://wokwi.com), with ESP-IDF heap poisoning on | Data physically in PSRAM; exact free size before and after each test; heap integrity after each test; a 1 MB pattern that survives other allocations; filling PSRAM completely and recovering; both cores allocating at once |
-| Build | Arduino-ESP32 examples on ESP32 and ESP32-S3; the ESP-IDF example with exceptions off; Arduino Library Manager lint | It compiles where people use it |
+| Device | 11 tests on ESP32 (4 MB quad PSRAM) and ESP32-S3 (octal PSRAM), running in [QEMU](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/tools/qemu.html), Espressif's emulator, with ESP-IDF heap poisoning on | Data physically in PSRAM; exact free size before and after each test; heap integrity after each test; a 1 MB pattern that survives other allocations; filling PSRAM completely and recovering; both cores allocating at once |
+| Arduino | All six examples compiled for ESP32 and ESP32-S3 with Arduino-ESP32 3.3, then booted on an emulated ESP32 and checked line by line | The examples do what they say, under the real Arduino core |
+| Build | The ESP-IDF example with exceptions off; the Arduino Library Manager linter in strict mode | It compiles where people use it, and it can be listed |
 
 The tests were checked by breaking the library on purpose: routing allocations to internal RAM or ignoring alignment makes them fail. Simulation does not measure speed, so there are no timing claims here yet. Details in [docs/testing.md](docs/testing.md).
 
@@ -166,11 +167,11 @@ The tests were checked by breaking the library on purpose: routing allocations t
 
 | | Status |
 |---|---|
-| ESP32, ESP32-S3 | Tested (simulated hardware, see above) |
+| ESP32, ESP32-S3 | Tested in Espressif's emulator (see above); real-hardware reports welcome |
 | ESP32-S2, ESP32-C5, ESP32-P4 | Expected to work (same ESP-IDF heap API), not yet tested |
 | ESP32-C3, ESP32-C6, ESP32-H2 | No PSRAM on these chips |
-| Arduino-ESP32 | 3.x (C++17 required) |
-| ESP-IDF | 5.x |
+| Arduino-ESP32 | 3.x (C++17 required); tested with 3.3 |
+| ESP-IDF | 5.x; tested with 5.5 |
 
 ## Upgrading from 1.x
 
@@ -185,7 +186,7 @@ Version 1 was a single sketch with a `PSallocator` that supported `std::vector` 
 
 - [Guide](docs/guide.md): how it works, policies, strings, objects, globals, fragmentation, multi-core.
 - [API reference](docs/api.md): every public name.
-- [Testing](docs/testing.md): run the host tests, the device tests, and Wokwi on your machine.
+- [Testing](docs/testing.md): run the host tests, the device tests in QEMU, and the Arduino examples on your machine.
 - [FAQ](docs/faq.md)
 
 ## License

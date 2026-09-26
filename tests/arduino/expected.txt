@@ -1,0 +1,7 @@
+# example|a line its serial output must contain
+QuickStart|data lives in PSRAM: yes
+Containers|a map node in PSRAM: yes
+ObjectsInPsram|filter in PSRAM:    yes
+Policies|psram::vector: request refused, nothing allocated
+Diagnostics|heap integrity: ok
+LargeBuffers|in PSRAM: yes

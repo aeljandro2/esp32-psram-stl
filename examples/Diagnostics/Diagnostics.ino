@@ -1,4 +1,7 @@
-// Diagnostics: watch the PSRAM heap and catch fragmentation early.
+// Diagnostics: watch the PSRAM heap.
+//
+// On a freshly booted board the two patterns below end up close; the habit
+// that matters on a long-running device is watching largest_block, not just free.
 
 #include <PsramStl.h>
 
@@ -16,14 +19,14 @@ void setup() {
 
   {
     // Many small vectors growing one push_back at a time: each growth step
-    // frees the old buffer and allocates a bigger one, leaving gaps behind.
+    // allocates a bigger buffer, copies, and frees the old one.
     psram::vector<psram::vector<int>> grown(200);
     for (int round = 0; round < 64; ++round)
       for (auto& v : grown) v.push_back(round);
     printHeap("200 vectors, grown");
   }
   {
-    // Same data with reserve(): one allocation per vector, no gaps.
+    // Same data with reserve(): one allocation per vector.
     psram::vector<psram::vector<int>> reserved(200);
     for (auto& v : reserved) v.reserve(64);
     for (int round = 0; round < 64; ++round)
