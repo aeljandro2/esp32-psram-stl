@@ -46,7 +46,7 @@ void setup() {
   if (!psram::begin(Serial)) return;  // prints a report, or how to enable PSRAM
 
   psram::vector<float> samples;
-  samples.reserve(250000);            // 1 MB, about 3x all internal RAM
+  samples.reserve(250000);            // 1 MB, twice all of the internal RAM
   for (int i = 0; i < 250000; ++i) samples.push_back(i * 0.5f);
   Serial.printf("in PSRAM: %s\n", psram::is_psram(samples.data()) ? "yes" : "no");
 }

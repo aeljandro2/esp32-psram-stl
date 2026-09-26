@@ -13,7 +13,7 @@ void setup() {
     return;  // begin() already printed how to enable PSRAM
   }
 
-  // 250,000 floats = 1 MB: about three times all of the internal RAM.
+  // 250,000 floats = 1 MB: twice all of the internal RAM (ESP32: 520 KB, ESP32-S3: 512 KB).
   psram::vector<float> samples;
   samples.reserve(250000);
   for (int i = 0; i < 250000; ++i) {
