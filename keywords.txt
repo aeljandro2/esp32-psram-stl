@@ -1,0 +1,15 @@
+# Arduino IDE syntax highlighting (KEYWORD1 = types, KEYWORD2 = functions)
+psram	KEYWORD1
+allocator	KEYWORD1
+fallback	KEYWORD1
+resident	KEYWORD1
+heap_info	KEYWORD1
+unique_ptr	KEYWORD1
+make_unique	KEYWORD2
+make_shared	KEYWORD2
+available	KEYWORD2
+info	KEYWORD2
+is_psram	KEYWORD2
+check_integrity	KEYWORD2
+report	KEYWORD2
+set_oom_handler	KEYWORD2

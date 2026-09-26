@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  host-tests:
+    name: Host tests (${{ matrix.compiler }}, sanitizers)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S tests/host -B build/host -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+      - run: cmake --build build/host -j
+      - run: ./build/host/host_tests
+
+  arduino-lint:
+    name: Arduino Library Manager rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/arduino-lint-action@v2
+        with:
+          library-manager: submit
+          compliance: strict
+
+  arduino-examples:
+    name: Arduino examples (${{ matrix.board }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - board: ESP32
+            fqbn: esp32:esp32:esp32:PSRAM=enabled
+          - board: ESP32-S3
+            fqbn: esp32:esp32:esp32s3:PSRAM=opi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: ${{ matrix.fqbn }}
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          sketch-paths: examples
+          libraries: |
+            - source-path: ./
+          enable-warnings-report: true
+
+  esp-idf-example:
+    name: ESP-IDF example (exceptions off)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: esp32-psram-stl
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4
+          target: esp32s3
+          path: esp32-psram-stl/extras/esp-idf/hello_psram
+
+  device-tests:
+    name: Device tests in Wokwi (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [esp32, esp32s3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: esp32-psram-stl  # the directory name is the ESP-IDF component name
+      - name: Build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4
+          target: ${{ matrix.target }}
+          path: esp32-psram-stl/tests/device
+          command: >-
+            idf.py -B build/${{ matrix.target }}
+            -D SDKCONFIG=build/${{ matrix.target }}/sdkconfig
+            -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.${{ matrix.target }}"
+            set-target ${{ matrix.target }} build
+      - name: Run in Wokwi
+        uses: wokwi/wokwi-ci-action@v1
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: esp32-psram-stl/tests/device/wokwi/${{ matrix.target }}
+          timeout: 600000
+          expect_text: ALL TESTS PASSED
+          fail_text: TESTS FAILED
+          serial_log_file: serial.log
+      - name: Keep the serial log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wokwi-serial-${{ matrix.target }}
+          path: esp32-psram-stl/tests/device/wokwi/${{ matrix.target }}/serial.log
+          if-no-files-found: ignore

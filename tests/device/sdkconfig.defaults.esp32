@@ -1,0 +1,2 @@
+# ESP32 with 4 MB quad-SPI PSRAM (Wokwi: psramSize "4").
+CONFIG_SPIRAM_MODE_QUAD=y

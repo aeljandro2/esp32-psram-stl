@@ -1,0 +1,15 @@
+# PSRAM on, and the heap added to the allocator.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# The tests exercise the out-of-memory path, which throws std::bad_alloc.
+CONFIG_COMPILER_CXX_EXCEPTIONS=y
+
+# Guard bytes and fill patterns around every heap block: any out-of-bounds
+# write or use-after-free shows up in heap_caps_check_integrity_all().
+CONFIG_HEAP_POISONING_COMPREHENSIVE=y
+
+# Long-running tests: bigger main stack, no task watchdog noise.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+CONFIG_ESP_TASK_WDT_EN=n
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

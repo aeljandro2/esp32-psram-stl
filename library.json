@@ -1,0 +1,14 @@
+{
+  "name": "esp32-psram-stl",
+  "version": "2.0.0",
+  "description": "Header-only C++17 allocators that put std::vector, std::map, std::string, and your own objects in the ESP32's PSRAM.",
+  "keywords": ["psram", "spiram", "allocator", "stl", "vector", "map", "memory", "esp32"],
+  "repository": { "type": "git", "url": "https://github.com/aeljandro2/esp32-psram-stl.git" },
+  "authors": [{ "name": "Manuel Núñez", "url": "https://github.com/aeljandro2", "maintainer": true }],
+  "license": "MIT",
+  "frameworks": ["arduino", "espidf"],
+  "platforms": ["espressif32"],
+  "headers": ["PsramStl.h"],
+  "build": { "srcDir": "src", "includeDir": "src" },
+  "export": { "exclude": ["tests", "docs", ".github", "build"] }
+}

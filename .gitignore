@@ -1,0 +1,8 @@
+build/
+tests/device/build/
+tests/device/sdkconfig
+tests/device/sdkconfig.old
+tests/device/managed_components/
+tests/device/dependencies.lock
+.vscode/
+.idea/
